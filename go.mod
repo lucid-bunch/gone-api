@@ -1,4 +1,4 @@
-module github.com/cabels/gone-api
+module github.com/lucid-bunch/gone-api
 
 go 1.12
 

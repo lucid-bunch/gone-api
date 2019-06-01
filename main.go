@@ -8,6 +8,9 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/render"
 	"github.com/joho/godotenv"
 )
 
@@ -51,30 +54,8 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	params := InitParams()
-	app = NewApp(params)
-
-	searchRes, searchErr := app.Search()
-	if searchErr != nil {
-		panic(searchErr)
-	}
-	for _, d := range searchRes.Result.Documents {
-		log.Println(d.Title)
-	}
-}
-
-// NewApp constructor
-func NewApp(params *Params) *App {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-	return &App{
-		URLTemplate: os.Getenv("URL_TEMPLATE"),
-		Accept:      os.Getenv("ACCEPT_HEADER"),
-		Params:      params,
-		Client:      http.Client{},
-	}
+	app = NewApp()
+	http.ListenAndServe(":3000", Routes())
 }
 
 // InitParams initializes params
@@ -87,8 +68,46 @@ func InitParams() *Params {
 	}
 }
 
+// NewApp constructor
+func NewApp() *App {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+	params := InitParams()
+	return &App{
+		URLTemplate: os.Getenv("URL_TEMPLATE"),
+		Accept:      os.Getenv("ACCEPT_HEADER"),
+		Params:      params,
+		Client:      http.Client{},
+	}
+}
+
+// Routes func
+func Routes() *chi.Mux {
+	router := chi.NewRouter()
+	router.Use(
+		render.SetContentType(render.ContentTypeJSON),
+		middleware.Logger,
+		middleware.DefaultCompress,
+		middleware.RedirectSlashes,
+		middleware.Recoverer,
+	)
+	router.Route("/v1", func(r chi.Router) {
+		r.Mount("/api", SearchRoutes())
+	})
+	return router
+}
+
+// SearchRoutes func
+func SearchRoutes() *chi.Mux {
+	router := chi.NewRouter()
+	router.Get("/", Search)
+	return router
+}
+
 // Search method
-func (app *App) Search() (*Body, error) {
+func Search(w http.ResponseWriter, r *http.Request) {
 	url := fmt.Sprintf(
 		app.URLTemplate,
 		app.Params.Query,
@@ -96,21 +115,12 @@ func (app *App) Search() (*Body, error) {
 		app.Params.Size,
 		app.Params.Offset)
 
-	req, reqErr := http.NewRequest("GET", url, nil)
-	if reqErr != nil {
-		return nil, reqErr
-	}
+	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("Accept", app.Accept)
 
-	response, responseErr := app.Client.Do(req)
-	if responseErr != nil {
-		return nil, responseErr
-	}
+	response, _ := app.Client.Do(req)
 
 	var body *Body
-	decodeErr := json.NewDecoder(response.Body).Decode(&body)
-	if decodeErr != nil {
-		return nil, decodeErr
-	}
-	return body, nil
+	json.NewDecoder(response.Body).Decode(&body)
+	render.JSON(w, r, body)
 }

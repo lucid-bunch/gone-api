@@ -8,9 +8,9 @@ API that allows you to search the national encyclopedia (SE).
 
 The following environment variables can be set (use .env file for convenience):
 
-* `URL_TEMPLATE` --
-* `ACCEPT_HEADER` --
-* `Q_PARAM` --
-* `SRC_PARAM` --
-* `SIZE_PARAM` --
-* `OFFSET_PARAM` --
+*   `URL_TEMPLATE` --
+*   `ACCEPT_HEADER` --
+*   `Q_PARAM` --
+*   `SRC_PARAM` --
+*   `SIZE_PARAM` --
+*   `OFFSET_PARAM` --
